@@ -2,10 +2,7 @@ import pkg from 'pg';
 const { Client } = pkg;
 
 export default async function handler(req, res) {
-    const client = new Client({
-        connectionString: process.env.POSTGRES_URL,
-    });
-    
+    const client = new Client({ connectionString: process.env.POSTGRES_URL });
     await client.connect();
 
     try {
@@ -15,6 +12,18 @@ export default async function handler(req, res) {
         } 
         if (req.method === 'POST') {
             const { hostName, contactNumber, venueChoice, eventDate, timeSlot } = req.body;
+            
+            // CHECK FOR DUPLICATES FIRST
+            const check = await client.query(
+                'SELECT * FROM events WHERE venue_choice = $1 AND event_date = $2 AND time_slot = $3',
+                [venueChoice, eventDate, timeSlot]
+            );
+            
+            if (check.rows.length > 0) {
+                return res.status(409).json({ message: 'Slot already booked!' });
+            }
+
+            // IF CLEAR, SAVE EVENT
             await client.query(
                 'INSERT INTO events (host_name, contact_number, venue_choice, event_date, time_slot) VALUES ($1, $2, $3, $4, $5);',
                 [hostName, contactNumber, venueChoice, eventDate, timeSlot]
@@ -34,4 +43,4 @@ export default async function handler(req, res) {
     } finally {
         await client.end();
     }
-}
+}}
