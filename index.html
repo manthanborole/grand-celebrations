@@ -331,6 +331,276 @@
     <!-- Bootstrap JS Bundle for Mobile Menu Support -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+</html>                    </div>
+                    <div class="card-body p-4 text-center">
+                        <p class="text-muted">Select a date and venue to see if the Morning or Evening slot is available.</p>
+                        <div class="row g-3 justify-content-center">
+                            <div class="col-md-5">
+                                <input type="date" id="checkDate" class="form-control" required>
+                            </div>
+                            <div class="col-md-5">
+                                <select id="checkVenue" class="form-select" required>
+                                    <option value="" disabled selected>Select Venue</option>
+                                    <option value="Celebration Lawn">Celebration Lawn</option>
+                                    <option value="Celebration Hall 1">Celebration Hall 1</option>
+                                    <option value="Celebration Hall 2">Celebration Hall 2</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" onclick="checkSlots()">Check</button>
+                            </div>
+                        </div>
+                        <!-- Results Box -->
+                        <div id="availabilityResults" class="mt-4 p-3 rounded bg-light border" style="display: none;">
+                            <h5 class="fw-bold mb-3">Slot Status for <span id="resDate" class="text-primary"></span></h5>
+                            <div class="d-flex justify-content-around">
+                                <div id="resMorning" class="fs-5"><i class="bi bi-brightness-alt-high text-warning"></i> Morning: <span class="badge"></span></div>
+                                <div id="resEvening" class="fs-5"><i class="bi bi-moon-stars text-secondary"></i> Evening: <span class="badge"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ADMIN ONLY: Event Logging Form -->
+    <section class="container my-5 admin-only" id="log-event">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow border-0 border-success">
+                    <div class="card-header bg-success text-white py-3">
+                        <h4 class="mb-0 text-center"><i class="bi bi-shield-lock me-2"></i>Admin: Log a Confirmed Event</h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="eventForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Host Name</label>
+                                    <input type="text" id="hostName" class="form-control" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Contact Number</label>
+                                    <input type="tel" id="contactNumber" class="form-control" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Venue Booked</label>
+                                    <select id="venueChoice" class="form-select" required>
+                                        <option value="" disabled selected>Select Venue</option>
+                                        <option value="Celebration Lawn">Celebration Lawn</option>
+                                        <option value="Celebration Hall 1">Celebration Hall 1</option>
+                                        <option value="Celebration Hall 2">Celebration Hall 2</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Event Date</label>
+                                    <input type="date" id="eventDate" class="form-control" required>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold">Time Slot</label>
+                                    <select id="timeSlot" class="form-select" required>
+                                        <option value="" disabled selected>Select Morning or Evening</option>
+                                        <option value="Morning">Morning (Day Event)</option>
+                                        <option value="Evening">Evening (Night Event)</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 mt-4">
+                                    <button type="submit" class="btn btn-success w-100 py-2 fs-5 fw-semibold">Lock In Event</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Logged Events Table Section -->
+    <section class="container my-5" id="logged-events">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Upcoming Events</h5>
+                <button id="clearAllBtn" class="btn btn-sm btn-danger admin-only" onclick="clearAllEvents()">
+                    <i class="bi bi-trash"></i> Clear All Records
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0 text-center">
+                        <thead class="table-secondary">
+                            <tr id="tableHeader">
+                                <!-- Headers injected by JavaScript depending on Admin status -->
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTableBody">
+                            <!-- Injected by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scripts -->
+    <script>
+        const ADMIN_PASSWORD = "admin";
+        let isAdminLoggedIn = false;
+        let currentEvents = []; 
+
+        window.toggleAdmin = function() {
+            if (isAdminLoggedIn) {
+                isAdminLoggedIn = false;
+                document.getElementById("adminToggleBtn").innerHTML = "Admin Login";
+                document.getElementById("adminToggleBtn").classList.replace("text-danger", "text-warning");
+                alert("Logged out of Admin Mode.");
+            } else {
+                const pass = prompt("Enter Admin Password:");
+                if (pass === ADMIN_PASSWORD) {
+                    isAdminLoggedIn = true;
+                    document.getElementById("adminToggleBtn").innerHTML = "<i class='bi bi-shield-lock'></i> Exit Admin";
+                    document.getElementById("adminToggleBtn").classList.replace("text-warning", "text-danger");
+                }
+            }
+            toggleAdminUI();
+            renderTable(); 
+        };
+
+        function toggleAdminUI() {
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.style.display = isAdminLoggedIn ? (el.tagName === 'LI' ? 'list-item' : 'block') : 'none';
+            });
+        }
+
+        async function fetchEvents() {
+            try {
+                const res = await fetch('/api/events');
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                currentEvents = data.map(evt => {
+                    const rawDate = new Date(evt.event_date).toISOString().split('T')[0];
+                    const [year, month, day] = rawDate.split('-');
+                    return {
+                        id: evt.id,
+                        hostName: evt.host_name,
+                        contactNumber: evt.contact_number,
+                        venueChoice: evt.venue_choice,
+                        eventDate: rawDate, // Keep YYYY-MM-DD for background checking
+                        displayDate: `${day}/${month}/${year}`, // Use DD/MM/YYYY for the table
+                        timeSlot: evt.time_slot
+                    };
+                });
+                renderTable();
+            } catch (err) {
+                console.error("Data error:", err);
+            }
+        }
+
+        document.getElementById("eventForm")?.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const payload = {
+                hostName: document.getElementById("hostName").value,
+                contactNumber: document.getElementById("contactNumber").value,
+                venueChoice: document.getElementById("venueChoice").value,
+                eventDate: document.getElementById("eventDate").value,
+                timeSlot: document.getElementById("timeSlot").value
+            };
+
+            // Client-side Duplicate Check
+            const isDuplicate = currentEvents.some(evt => 
+                evt.eventDate === payload.eventDate && 
+                evt.venueChoice === payload.venueChoice && 
+                evt.timeSlot === payload.timeSlot
+            );
+
+            if (isDuplicate) {
+                alert("This slot is already booked! Please select a different date, time, or venue.");
+                return;
+            }
+
+            const res = await fetch('/api/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!res.ok) {
+                alert("Error: Slot may have just been booked by someone else.");
+                return;
+            }
+            
+            this.reset();
+            alert("Event successfully locked in!");
+            document.getElementById("availabilityResults").style.display = "none";
+            fetchEvents();
+        });
+
+        function renderTable() {
+            const thead = document.getElementById("tableHeader");
+            const tbody = document.getElementById("eventsTableBody");
+            if (!tbody || !thead) return; 
+            
+            thead.innerHTML = isAdminLoggedIn 
+                ? `<th>Date</th> <th>Slot</th> <th>Venue</th> <th>Host</th> <th>Contact</th> <th>Action</th>`
+                : `<th>Date</th> <th>Slot</th> <th>Venue</th> <th>Status</th>`;
+            
+            tbody.innerHTML = currentEvents.length === 0 
+                ? `<tr><td colspan="6" class="text-center text-muted py-4">No events booked.</td></tr>` 
+                : "";
+
+            currentEvents.forEach((evt) => {
+                const badge = evt.timeSlot === "Morning" ? "bg-warning text-dark" : "bg-dark text-white";
+                const tr = document.createElement("tr");
+                
+                if (isAdminLoggedIn) {
+                    tr.innerHTML = `<td class="fw-bold">${evt.displayDate}</td> <td><span class="badge ${badge}">${evt.timeSlot}</span></td> <td>${evt.venueChoice}</td> <td>${evt.hostName}</td> <td>${evt.contactNumber}</td> <td><button class="btn btn-sm btn-outline-danger" onclick="deleteSingleEvent(${evt.id})"><i class="bi bi-trash"></i></button></td>`;
+                } else {
+                    tr.innerHTML = `<td class="fw-bold">${evt.displayDate}</td> <td><span class="badge ${badge}">${evt.timeSlot}</span></td> <td>${evt.venueChoice}</td> <td><span class="badge bg-danger">Booked</span></td>`;
+                }
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.checkSlots = function() {
+            const date = document.getElementById("checkDate").value;
+            const venue = document.getElementById("checkVenue").value;
+            if (!date || !venue) return alert("Select both a date and venue.");
+
+            const eventsOnDay = currentEvents.filter(e => e.eventDate === date && e.venueChoice === venue);
+            
+            // Display Date format for the search results box
+            const [year, month, day] = date.split('-');
+            document.getElementById("resDate").innerText = `${day}/${month}/${year}`;
+            
+            ["Morning", "Evening"].forEach(slot => {
+                const isBooked = eventsOnDay.some(e => e.timeSlot === slot);
+                const badge = document.querySelector(`#res${slot} .badge`);
+                badge.className = isBooked ? "badge bg-danger" : "badge bg-success";
+                badge.innerText = isBooked ? "Booked" : "Available";
+            });
+            document.getElementById("availabilityResults").style.display = "block";
+        }
+
+        window.deleteSingleEvent = async function(id) {
+            if (isAdminLoggedIn && confirm("Delete this event?")) {
+                await fetch('/api/events', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+                fetchEvents();
+            }
+        };
+
+        window.clearAllEvents = async function() {
+            if (isAdminLoggedIn && confirm("WARNING: Clear ALL events?")) {
+                await fetch('/api/events', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'ALL' }) });
+                fetchEvents();
+            }
+        };
+
+        // Load data on start
+        fetchEvents();
+    </script>
+    
+    <!-- Bootstrap JS Bundle for Mobile Menu Support -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>    <!-- Check Availability Section -->
     <section class="container my-5" id="check-availability">
         <div class="row justify-content-center">
