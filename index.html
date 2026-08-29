@@ -1,0 +1,125 @@
+<script>
+    const ADMIN_PASSWORD = "admin";
+    let isAdminLoggedIn = false;
+    let currentEvents = []; 
+
+    window.toggleAdmin = function() {
+        if (isAdminLoggedIn) {
+            isAdminLoggedIn = false;
+            document.getElementById("adminToggleBtn").innerHTML = "Admin Login";
+            document.getElementById("adminToggleBtn").classList.replace("text-danger", "text-warning");
+            alert("Logged out of Admin Mode.");
+        } else {
+            const pass = prompt("Enter Admin Password:");
+            if (pass === ADMIN_PASSWORD) {
+                isAdminLoggedIn = true;
+                document.getElementById("adminToggleBtn").innerHTML = "<i class='bi bi-shield-lock'></i> Exit Admin";
+                document.getElementById("adminToggleBtn").classList.replace("text-warning", "text-danger");
+            }
+        }
+        toggleAdminUI();
+        renderTable(); 
+    };
+
+    function toggleAdminUI() {
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = isAdminLoggedIn ? (el.tagName === 'LI' ? 'list-item' : 'block') : 'none';
+        });
+    }
+
+    async function fetchEvents() {
+        const res = await fetch('/api/events');
+        const data = await res.json();
+        currentEvents = data.map(evt => ({
+            id: evt.id,
+            hostName: evt.host_name,
+            contactNumber: evt.contact_number,
+            venueChoice: evt.venue_choice,
+            eventDate: new Date(evt.event_date).toISOString().split('T')[0],
+            timeSlot: evt.time_slot
+        }));
+        renderTable();
+    }
+
+    document.getElementById("eventForm")?.addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const payload = {
+            hostName: document.getElementById("hostName").value,
+            contactNumber: document.getElementById("contactNumber").value,
+            venueChoice: document.getElementById("venueChoice").value,
+            eventDate: document.getElementById("eventDate").value,
+            timeSlot: document.getElementById("timeSlot").value
+        };
+
+        await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        this.reset();
+        alert("Event successfully locked in!");
+        document.getElementById("availabilityResults").style.display = "none";
+        fetchEvents();
+    });
+
+    function renderTable() {
+        const thead = document.getElementById("tableHeader");
+        const tbody = document.getElementById("eventsTableBody");
+        if (!tbody || !thead) return; 
+        
+        thead.innerHTML = isAdminLoggedIn 
+            ? `<th>Date</th> <th>Slot</th> <th>Venue</th> <th>Host</th> <th>Contact</th> <th>Action</th>`
+            : `<th>Date</th> <th>Slot</th> <th>Venue</th> <th>Status</th>`;
+        
+        tbody.innerHTML = currentEvents.length === 0 
+            ? `<tr><td colspan="6" class="text-center text-muted py-4">No events booked.</td></tr>` 
+            : "";
+
+        currentEvents.forEach((evt) => {
+            const badge = evt.timeSlot === "Morning" ? "bg-warning text-dark" : "bg-dark text-white";
+            const tr = document.createElement("tr");
+            
+            if (isAdminLoggedIn) {
+                tr.innerHTML = `<td class="fw-bold">${evt.eventDate}</td> <td><span class="badge ${badge}">${evt.timeSlot}</span></td> <td>${evt.venueChoice}</td> <td>${evt.hostName}</td> <td>${evt.contactNumber}</td> <td><button class="btn btn-sm btn-outline-danger" onclick="deleteSingleEvent(${evt.id})"><i class="bi bi-trash"></i></button></td>`;
+            } else {
+                tr.innerHTML = `<td class="fw-bold">${evt.eventDate}</td> <td><span class="badge ${badge}">${evt.timeSlot}</span></td> <td>${evt.venueChoice}</td> <td><span class="badge bg-danger">Booked</span></td>`;
+            }
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.checkSlots = function() {
+        const date = document.getElementById("checkDate").value;
+        const venue = document.getElementById("checkVenue").value;
+        if (!date || !venue) return alert("Select both a date and venue.");
+
+        const eventsOnDay = currentEvents.filter(e => e.eventDate === date && e.venueChoice === venue);
+        document.getElementById("resDate").innerText = date;
+        
+        ["Morning", "Evening"].forEach(slot => {
+            const isBooked = eventsOnDay.some(e => e.timeSlot === slot);
+            const badge = document.querySelector(`#res${slot} .badge`);
+            badge.className = isBooked ? "badge bg-danger" : "badge bg-success";
+            badge.innerText = isBooked ? "Booked" : "Available";
+        });
+        document.getElementById("availabilityResults").style.display = "block";
+    }
+
+    window.deleteSingleEvent = async function(id) {
+        if (isAdminLoggedIn && confirm("Delete this event?")) {
+            await fetch('/api/events', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+            fetchEvents();
+        }
+    };
+
+    window.clearAllEvents = async function() {
+        if (isAdminLoggedIn && confirm("WARNING: Clear ALL events?")) {
+            await fetch('/api/events', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'ALL' }) });
+            fetchEvents();
+        }
+    };
+
+    // Load data on start
+    fetchEvents();
+</script>
