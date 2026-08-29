@@ -42,6 +42,7 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="#check-availability">Check Availability</a></li>
                     <li class="nav-item"><a class="nav-link" href="#calendar-section">Calendar</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#logged-events">Event List</a></li>
                     <li class="nav-item admin-only"><a class="nav-link text-success fw-bold" href="#log-event">Log New Event</a></li>
                     <li class="nav-item">
                         <a class="nav-link text-warning fw-bold" href="#" id="adminToggleBtn" onclick="toggleAdmin()">Admin Login</a>
@@ -101,9 +102,6 @@
     <section class="container my-5" id="calendar-section">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold m-0"><i class="bi bi-calendar-month text-primary me-2"></i>Interactive Booking Calendar</h3>
-            <button id="clearAllBtn" class="btn btn-sm btn-outline-danger admin-only" onclick="clearAllEvents()">
-                <i class="bi bi-trash"></i> Clear All Records
-            </button>
         </div>
         <div id="calendar"></div>
     </section>
@@ -160,23 +158,18 @@
         </div>
     </section>
 
-    <!-- ADMIN ONLY: List View Table -->
-    <section class="container my-5 admin-only" id="logged-events">
+    <!-- VISIBLE TO ALL: List View Table -->
+    <section class="container my-5" id="logged-events">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-dark text-white py-3">
-                <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Manage Upcoming Events (List View)</h5>
+                <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Upcoming Events</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover mb-0 text-center">
                         <thead class="table-secondary">
-                            <tr>
-                                <th>Date</th> 
-                                <th>Slot</th> 
-                                <th>Venue</th> 
-                                <th>Host</th> 
-                                <th>Contact</th> 
-                                <th>Actions</th>
+                            <tr id="tableHeader">
+                                <!-- Headers injected by JavaScript -->
                             </tr>
                         </thead>
                         <tbody id="eventsTableBody">
@@ -193,7 +186,7 @@
         let isAdminLoggedIn = false;
         let currentEvents = []; 
         let calendar; 
-        let editingId = null; // Tracks if we are editing an event
+        let editingId = null; 
 
         // Setup Calendar
         document.addEventListener('DOMContentLoaded', function() {
@@ -207,6 +200,15 @@
                     right: 'dayGridMonth'
                 },
                 events: [],
+                eventClick: function(info) {
+                    if (isAdminLoggedIn) {
+                        if (confirm(`Delete event for ${info.event.title}?`)) {
+                            deleteSingleEvent(info.event.id);
+                        }
+                    } else {
+                        alert(`Event Details:\n${info.event.title}`);
+                    }
+                }
             });
             calendar.render();
         });
@@ -287,28 +289,44 @@
             });
         }
 
-        // Render Admin Table
+        // Render Table dynamically based on login status
         function renderTable() {
+            const thead = document.getElementById("tableHeader");
             const tbody = document.getElementById("eventsTableBody");
-            if (!tbody) return; 
+            if (!tbody || !thead) return; 
+            
+            // Set headers based on Admin status
+            thead.innerHTML = isAdminLoggedIn 
+                ? `<th>Date</th> <th>Slot</th> <th>Venue</th> <th>Host</th> <th>Contact</th> <th>Actions</th>`
+                : `<th>Date</th> <th>Slot</th> <th>Venue</th> <th>Status</th>`;
             
             tbody.innerHTML = currentEvents.length === 0 
-                ? `<tr><td colspan="6" class="text-center text-muted py-4">No events booked.</td></tr>` 
+                ? `<tr><td colspan="${isAdminLoggedIn ? 6 : 4}" class="text-center text-muted py-4">No events booked.</td></tr>` 
                 : "";
 
             currentEvents.forEach((evt) => {
                 const badge = evt.timeSlot === "Morning" ? "bg-warning text-dark" : "bg-dark text-white";
                 const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td class="fw-bold align-middle">${evt.displayDate}</td> 
-                    <td class="align-middle"><span class="badge ${badge}">${evt.timeSlot}</span></td> 
-                    <td class="align-middle">${evt.venueChoice}</td> 
-                    <td class="align-middle">${evt.hostName}</td> 
-                    <td class="align-middle">${evt.contactNumber}</td> 
-                    <td class="align-middle">
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editSingleEvent(${evt.id})" title="Edit"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSingleEvent(${evt.id})" title="Delete"><i class="bi bi-trash"></i></button>
-                    </td>`;
+                
+                if (isAdminLoggedIn) {
+                    tr.innerHTML = `
+                        <td class="fw-bold align-middle">${evt.displayDate}</td> 
+                        <td class="align-middle"><span class="badge ${badge}">${evt.timeSlot}</span></td> 
+                        <td class="align-middle">${evt.venueChoice}</td> 
+                        <td class="align-middle">${evt.hostName}</td> 
+                        <td class="align-middle">${evt.contactNumber}</td> 
+                        <td class="align-middle">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editSingleEvent(${evt.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteSingleEvent(${evt.id})" title="Delete"><i class="bi bi-trash"></i></button>
+                        </td>`;
+                } else {
+                    tr.innerHTML = `
+                        <td class="fw-bold align-middle">${evt.displayDate}</td> 
+                        <td class="align-middle"><span class="badge ${badge}">${evt.timeSlot}</span></td> 
+                        <td class="align-middle">${evt.venueChoice}</td> 
+                        <td class="align-middle"><span class="badge bg-danger">Booked</span></td>
+                    `;
+                }
                 tbody.appendChild(tr);
             });
         }
@@ -318,19 +336,15 @@
             const evt = currentEvents.find(e => e.id === id);
             if (!evt) return;
             
-            // Populate Form
             document.getElementById("hostName").value = evt.hostName;
             document.getElementById("contactNumber").value = evt.contactNumber;
             document.getElementById("venueChoice").value = evt.venueChoice;
             document.getElementById("eventDate").value = evt.eventDate;
             document.getElementById("timeSlot").value = evt.timeSlot;
             
-            // Change Button States
             editingId = id;
             document.getElementById("submitBtn").innerText = "Update Event";
             document.getElementById("cancelEditBtn").classList.remove("d-none");
-            
-            // Scroll to form
             document.getElementById("log-event").scrollIntoView({ behavior: 'smooth' });
         };
 
@@ -342,7 +356,7 @@
             document.getElementById("cancelEditBtn").classList.add("d-none");
         };
 
-        // Submit Form (Handles Post, Both Slots, and Edits)
+        // Submit Form
         document.getElementById("eventForm")?.addEventListener("submit", async function(e) {
             e.preventDefault();
             const payload = {
@@ -353,16 +367,14 @@
                 timeSlot: document.getElementById("timeSlot").value
             };
 
-            // If "Both" is selected, we book Morning and Evening. Otherwise, just book the selected slot.
             let slotsToBook = payload.timeSlot === "Both" ? ["Morning", "Evening"] : [payload.timeSlot];
 
-            // 1. Check for duplicates BEFORE doing anything
             for (let slot of slotsToBook) {
                 const isDuplicate = currentEvents.some(evt => 
                     evt.eventDate === payload.eventDate && 
                     evt.venueChoice === payload.venueChoice && 
                     evt.timeSlot === slot &&
-                    evt.id !== editingId // Ignore the event we are currently editing!
+                    evt.id !== editingId 
                 );
                 if (isDuplicate) {
                     alert(`The ${slot} slot is already booked for this date and venue!`);
@@ -370,19 +382,17 @@
                 }
             }
 
-            // 2. If editing, Delete the old record first
             if (editingId) {
                 await fetch('/api/events', { 
                     method: 'DELETE', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify({ id: editingId }) 
                 });
-                editingId = null; // Reset edit state
+                editingId = null; 
                 document.getElementById("submitBtn").innerText = "Lock In Event";
                 document.getElementById("cancelEditBtn").classList.add("d-none");
             }
 
-            // 3. Save the new records (Loop handles "Both" smoothly)
             for (let slot of slotsToBook) {
                 await fetch('/api/events', {
                     method: 'POST',
@@ -397,6 +407,7 @@
             fetchEvents();
         });
 
+        // Check Slots
         window.checkSlots = function() {
             const date = document.getElementById("checkDate").value;
             const venue = document.getElementById("checkVenue").value;
@@ -415,6 +426,7 @@
             document.getElementById("availabilityResults").style.display = "block";
         }
 
+        // Delete Event
         window.deleteSingleEvent = async function(id) {
             if (isAdminLoggedIn && confirm("Are you sure you want to delete this event?")) {
                 await fetch('/api/events', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
@@ -422,14 +434,7 @@
             }
         };
 
-        window.clearAllEvents = async function() {
-            if (isAdminLoggedIn && confirm("WARNING: Clear ALL events?")) {
-                await fetch('/api/events', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'ALL' }) });
-                fetchEvents();
-            }
-        };
-
-        // Load data on startup
+        // Initial Load
         fetchEvents();
     </script>
     
