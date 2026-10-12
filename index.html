@@ -206,7 +206,11 @@
                 eventClick: function(info) {
                     const evt = currentEvents.find(e => String(e.id) === String(info.event.id));
                     if (evt) {
-                        alert(`Event Details:\nVenue: ${evt.venueChoice}\nSlot: ${evt.timeSlot}\nDate: ${evt.displayDate}\nHost: ${evt.hostName}\nContact: ${evt.contactNumber}`);
+                        if (isAdminLoggedIn) {
+                            alert(`Admin Details:\nVenue: ${evt.venueChoice}\nSlot: ${evt.timeSlot}\nDate: ${evt.displayDate}\nHost: ${evt.hostName}\nContact: ${evt.contactNumber}`);
+                        } else {
+                            alert(`Booking Status:\nVenue: ${evt.venueChoice}\nSlot: ${evt.timeSlot}\nDate: ${evt.displayDate}\nStatus: Booked`);
+                        }
                     } else {
                         alert(info.event.title);
                     }
