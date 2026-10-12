@@ -201,7 +201,7 @@
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 contentHeight: 'auto',
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
                 events: [],
                 eventClick: function(info) {
                     const evt = currentEvents.find(e => String(e.id) === String(info.event.id));
