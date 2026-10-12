@@ -188,7 +188,6 @@
     </div>
 
     <script>
-        // Use browser's Local Storage to remember login status even after refresh
         let adminToken = localStorage.getItem('adminToken') || null;
         let isAdminLoggedIn = !!adminToken; 
         
@@ -205,23 +204,23 @@
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
                 events: [],
                 eventClick: function(info) {
-                    if (isAdminLoggedIn) {
-                        if (confirm(`Delete event for ${info.event.title}?`)) {
-                            deleteSingleEvent(info.event.id);
-                        }
+                    const evt = currentEvents.find(e => String(e.id) === String(info.event.id));
+                    if (evt) {
+                        alert(`Event Details:\nVenue: ${evt.venueChoice}\nSlot: ${evt.timeSlot}\nDate: ${evt.displayDate}\nHost: ${evt.hostName}\nContact: ${evt.contactNumber}`);
+                    } else {
+                        alert(info.event.title);
                     }
                 }
             });
             calendar.render();
             
-            // Check if already logged in on page load
             if (isAdminLoggedIn) enableAdminView();
+            fetchEvents();
         });
 
         // ---------------- AUTHENTICATION SYSTEM ----------------
         window.toggleAdmin = function() {
             if (isAdminLoggedIn) {
-                // Logout Process
                 isAdminLoggedIn = false;
                 adminToken = null;
                 localStorage.removeItem('adminToken');
@@ -234,7 +233,6 @@
                 renderTable();
                 alert("Logged out securely.");
             } else {
-                // Open Login Modal
                 new bootstrap.Modal(document.getElementById('loginModal')).show();
             }
         };
@@ -249,13 +247,12 @@
                 });
 
                 if (res.ok) {
-                    // Save token securely in browser
                     adminToken = pass;
                     isAdminLoggedIn = true;
                     localStorage.setItem('adminToken', pass);
                     
                     bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
-                    document.getElementById("adminPasswordInput").value = ''; // clear input
+                    document.getElementById("adminPasswordInput").value = ''; 
                     
                     enableAdminView();
                 } else {
@@ -394,7 +391,6 @@
             document.getElementById("cancelEditBtn").classList.add("d-none");
         };
 
-        // Secure Submit Form (Now includes adminToken in Headers)
         document.getElementById("eventForm")?.addEventListener("submit", async function(e) {
             e.preventDefault();
             const payload = {
@@ -457,7 +453,6 @@
             document.getElementById("availabilityResults").style.display = "block";
         }
 
-        // Secure Delete Request (Includes adminToken)
         window.deleteSingleEvent = async function(id) {
             if (isAdminLoggedIn && confirm("Are you sure you want to delete this event?")) {
                 await fetch('/api/events', { 
@@ -468,8 +463,6 @@
                 fetchEvents();
             }
         };
-
-        fetchEvents();
     </script>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
